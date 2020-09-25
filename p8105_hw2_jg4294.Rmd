@@ -1,0 +1,6 @@
+---
+title: "Homework 2"
+author: "JingYao Geng"
+output: github_document
+---
+

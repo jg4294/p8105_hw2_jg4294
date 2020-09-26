@@ -103,3 +103,63 @@ precip_m
 ```
 
 This dataset contains information from the Mr.Trashwheel trash collector in Baltimore, Maryland. As trash enters the  inner harbor, the trashwheel collects that trash, and stores it in a dumpster. The dataset contains information on year, month, and trash collected, include some specific kinds of trash. There are a total of `r nrow(trashwheel_df)` rows in our final dataset. Additional data sheets include monthly precipitation for year 2017 and 2018. The total monthly precipitation for year 2017 is `r sum(pull(precip_2017, total))` (in). The total monthly precipitation for year 2018 is `r sum(pull(precip_2018, total))` (in). 
+
+
+## Problem 2
+
+**Read and Clean the NYC Transit dataset**
+```{r transit_df, collapse = TRUE, message = FALSE}
+# Clean all objects from the current workspace (R memory) 
+rm(list = ls())
+
+transit_df = 
+  read_csv(
+    "./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv") %>%
+  # data clean
+  janitor::clean_names() %>%
+  # retain columns we are interested in analyzing.
+  select(line:entry, vending, ada)  %>%
+  # recode 'entry' from a character variable into a logical variable.
+  mutate(entry = recode(entry, 'YES' = TRUE, 'NO' = FALSE)) 
+
+```
+
+* This dataset contains information for subway transmits in New York City, such as station name, station latitude/longitude, various routes served. This dataset has a total number of `r nrow(transit_df)` observations and `r ncol(transit_df)` columns that we are interested in analyzing. (They are line, station name, latitude, longitude, entry, entrance_type, vending, ada, and route1 to route11.) 
+* So far, we cleaned the columns name based on a consistent naming convention: snake_case, and we also re-coded the character variable 'entry' as a logical variable for further analyses.
+* To me, this dataset is very odd and is definitely not tidy at all. For example, the columns route1 to route11 look quite strange, and they are not easy to interpret. Because of that, we need tidy the dataset to make it more readable and understandable.
+
+**Tidy data**:
+
+Reformat data so that route number and route name are distinct variables. 
+
+```{r tidyversion}
+transit_tidy = 
+  transit_df %>% 
+  mutate(
+    route8 = as.character(route8),
+    route9 = as.character(route9),
+    route10 = as.character(route10),
+    route11 = as.character(route11)) %>% 
+  pivot_longer(
+    route1:route11,
+    names_to = "route_name", 
+    values_to = "route_number") %>% 
+  drop_na(route_number)
+```
+
+* By identidying both name and line of the stations, we find that there are
+`r transit_df %>% distinct(station_name, line) %>% nrow ` distinct stations in the NYC transits dataset. 
+
+* Among those statitions, 
+`r transit_df %>% distinct(station_name, line, ada) %>% filter(ada == TRUE) %>% nrow ` stations are ADA compliant.
+
+* The proportion of station entrances / exits without vending allow entrance are `r (transit_tidy %>% filter(vending == 'NO') %>% summarise(sum(entry) / n()))*100 ` %.
+
+* There are `r transit_tidy %>% filter(route_number == "A") %>% distinct(station_name, line) %>% count()` stations serve the A train. 
+* Among these stations, `r transit_tidy %>% filter(route_number == "A") %>% distinct(station_name, line, ada) %>% filter(ada == "TRUE") %>% count()` of them are ADA compliant.
+
+
+
+
+
+

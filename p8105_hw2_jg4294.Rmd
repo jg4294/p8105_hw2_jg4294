@@ -110,13 +110,15 @@ precip_m
 
 This dataset contains information from the Mr.Trashwheel trash collector in Baltimore, Maryland. As trash enters the  inner harbor, the trashwheel collects that trash, and stores it in a dumpster. The dataset contains information on year, month, and trash collected, include some specific kinds of trash. There are a total of `r nrow(trashwheel_df)` rows in our final dataset. Additional data sheets include monthly precipitation for year 2017 and 2018. The total monthly precipitation for year 2017 is `r sum(pull(precip_2017, total))` (in). The total monthly precipitation for year 2018 is `r sum(pull(precip_2018, total))` (in). 
 
-
+\newpage
 ## Problem 2
 
 **Read and Clean the NYC Transit dataset**
 ```{r transit_df, collapse = TRUE, message = FALSE}
+# Clean all objects from the current workspace (R memory) 
+rm(list = ls())
+# read the dataset
 transit_df = 
-  # read the dataset
   read_csv(
     "./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv") %>%
   # data clean
@@ -145,7 +147,7 @@ transit_df =
 
 Reformat data so that route number and route name are distinct variables. 
 
-```{r tidyversion}
+```{r transit_tidy, message = FALSE}
 transit_tidy = 
   transit_df %>% 
   # convert variable 'route1' to 'route11' into character variables.
@@ -162,3 +164,100 @@ transit_tidy =
 * There are `r transit_tidy %>% filter(route_number == "A") %>% distinct(station_name, line) %>% count()` stations serve the A train. 
 * Among these stations, `r transit_tidy %>% filter(route_number == "A") %>% distinct(station_name, line, ada) %>% filter(ada == "TRUE") %>% count()` of them are ADA compliant.
 
+\newpage
+## Question 3
+
+The dataset: pols.csv
+```{r pols_df+tidy, message = FALSE}
+pols_df = 
+  # read and the dataset
+  read_csv("./data/fivethirtyeight_datasets/pols-month.csv") %>%
+  janitor::clean_names() %>% 
+  separate(mon,  c("year", "month", "day")) %>% # break up variable 'mon' into 'year', 'month', and 'day'
+  mutate(month = as.numeric(month)) %>% #convert
+  relocate(prez_gop, prez_dem, everything()) %>% # relocate 'prez_gop', 'prez-dem' to the front.
+  
+  pivot_longer(
+    prez_gop:prez_dem,
+    names_to = "president",
+    names_prefix = "prez_",
+    values_to = "value") %>% # create variable 'president' to be either gop or dem
+  
+  filter(value == 1) %>% 
+  select(-day, -value)  # drop 'day' and 'value'
+
+# create a data frame for month            
+month_df = 
+  tibble(
+    month = 1:12, 
+    month_name = month.name)
+
+# tidy the pols_df
+pols_tidy = 
+  left_join(pols_df, month_df, by = "month") %>%
+  select(-month) %>% # delete column 'month'
+  relocate(year,month_name, president, everything()) %>% # relocate year, month_name, president to the front.
+  rename(month = month_name) #rename 'month_name' as 'month'
+  
+```
+
+The dataset: snp.csv
+```{r snp_df+tidy, message = FALSE}
+# read and clean the snp.csv dataset
+snp_df = 
+  read_csv("./data/fivethirtyeight_datasets/snp.csv") %>% 
+  janitor::clean_names() %>% # clean the data
+  separate(date, into = c("month", "day", "year")) %>%  # separate the variable 'date' into 3 parts.
+  mutate(month = as.numeric(month)) %>%
+  arrange(year, month) # arrange the data first by year then by month
+
+snp_tidy = 
+  left_join(snp_df, month_df, by = "month") %>% 
+  relocate(year, month_name, close) %>%  # relocate the sequnence of variables
+         select(-month, -day) %>% # drop 'month' and 'day'
+         rename(month = month_name) 
+          
+         
+```
+
+
+The dataset: unemployment.csv
+```{r}
+unem_df = 
+  read_csv("./data/fivethirtyeight_datasets/unemployment.csv") %>% 
+  janitor::clean_names() 
+
+unem_tidy = 
+  unem_df %>%
+  pivot_longer(
+    jan:dec,
+    names_to = "month",
+    values_to = "unemploymeny_rate") %>%
+  mutate(month = recode(month,"jan" = "January",
+                      "feb" = "February",
+                      "mar" = "March",
+                      "apr" = "April",
+                      "may" = "May",
+                      "jun" = "June",
+                      "jul" = "July",
+                      "aug" = "August",
+                      "sep" = "September",
+                      "oct" = "October",
+                      "nov" = "November",
+                      "dec" = "December")) %>% 
+  mutate_at(vars(year),as.character)
+
+```
+
+
+Join the datasets by merging snp into pols, and merging unemployment into the result.
+```{r}
+join_df = pols_tidy %>%
+          left_join(snp_tidy, by = c("year", "month")) %>%
+          left_join(unem_tidy, by = c("year", "month"))
+head(join_df) # take a look 
+```
+
+### Summary:
+
+Write a short paragraph about these datasets. Explain briefly what each dataset contained, and describe the resulting dataset (e.g. give the dimension, range of years, and names of key variables).

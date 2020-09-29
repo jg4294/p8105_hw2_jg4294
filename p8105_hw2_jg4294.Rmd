@@ -48,14 +48,14 @@ trashwheel_df =
     sports_balls = round(sports_balls),
     sports_balls = as.integer(sports_balls)
   )
-trashwheel_df
+head(trashwheel_df)
 ```
 
 
 #### **Read precipitation data for 2018 and 2017.**
 
 **2018:**
-```{r precip_2018, echo = FALSE}
+```{r precip_2018, message = FALSE, collapse = TRUE}
 precip_2018 = 
   read_excel(
     "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx",
@@ -71,7 +71,7 @@ precip_2018
 
 **2017:**
 
-```{r precip_2017, echo = FALSE}
+```{r precip_2017, message = FALSE, collapse = TRUE}
 precip_2017 = 
   read_excel(
     "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx",
@@ -105,7 +105,7 @@ precip_df =
 
 # left-join: 
 precip_m = left_join(precip_df, month_df, by = "month") 
-precip_m 
+head(precip_m) 
 ```
 
 This dataset contains information from the Mr.Trashwheel trash collector in Baltimore, Maryland. As trash enters the  inner harbor, the trashwheel collects that trash, and stores it in a dumpster. The dataset contains information on year, month, and trash collected, include some specific kinds of trash. There are a total of `r nrow(trashwheel_df)` rows in our final dataset. Additional data sheets include monthly precipitation for year 2017 and 2018. The total monthly precipitation for year 2017 is `r sum(pull(precip_2017, total))` (in). The total monthly precipitation for year 2018 is `r sum(pull(precip_2018, total))` (in). 
@@ -128,6 +128,7 @@ transit_df =
   # recode 'entry' from a character variable into a logical variable.
   mutate(entry = recode(entry, 'YES' = TRUE, 'NO' = FALSE)) 
 
+head(transit_df)
 ```
 
 * This dataset contains information for subway stations in New York City in terms of the entrance and exit. This dataset has a total number of `r nrow(transit_df)` observations and `r ncol(transit_df)` columns that we are interested in analyzing. (They are line, station name, latitude, longitude, entry, entrance_type, vending, ada, and route1 to route11.) 
@@ -140,7 +141,7 @@ transit_df =
 * Among those stations, 
 `r transit_df %>% distinct(station_name, line, ada) %>% filter(ada == TRUE) %>% nrow ` stations are ADA compliant.
 
-* The proportion of station entrances/exits without vending allow entrance are `r (nrow(filter(transit_df, vending == 'NO')) / nrow(transit_df))*100`%.
+* The proportion of station entrances/exits without vending allow entrance are `r (filter(transit_df, vending == "NO", entry =="TRUE") %>% nrow / filter(transit_df, vending == "NO") %>% nrow)*100`%.
 
 
 **Tidy data**:
@@ -159,6 +160,8 @@ transit_tidy =
     values_to = "route_number") %>% 
   # drop missing values in variable 'route_number'
   drop_na(route_number) 
+
+head(transit_tidy)
 ```
 
 * There are `r transit_tidy %>% filter(route_number == "A") %>% distinct(station_name, line) %>% count()` stations serve the A train. 
@@ -167,9 +170,9 @@ transit_tidy =
 \newpage
 ## Question 3
 
-The dataset: pols.csv
-```{r pols_df+tidy, message = FALSE}
-pols_df = 
+##### The dataset: pols.csv
+```{r pols_df+tidy, message = FALSE, collapse = TRUE}
+pols_tidy = 
   # read and the dataset
   read_csv("./data/fivethirtyeight_datasets/pols-month.csv") %>%
   janitor::clean_names() %>% 
@@ -190,19 +193,21 @@ pols_df =
 month_df = 
   tibble(
     month = 1:12, 
-    month_name = month.name)
+    month_name = month.name) 
 
 # tidy the pols_df
-pols_tidy = 
-  left_join(pols_df, month_df, by = "month") %>%
+pols_tidy_month = 
+  left_join(pols_tidy, month_df, by = "month") %>%
   select(-month) %>% # delete column 'month'
   relocate(year,month_name, president, everything()) %>% # relocate year, month_name, president to the front.
   rename(month = month_name) #rename 'month_name' as 'month'
+
+head(pols_tidy_month)
   
 ```
 
-The dataset: snp.csv
-```{r snp_df+tidy, message = FALSE}
+##### The dataset: snp.csv
+```{r snp_df+tidy, message = FALSE, collapse = TRUE}
 # read and clean the snp.csv dataset
 snp_df = 
   read_csv("./data/fivethirtyeight_datasets/snp.csv") %>% 
@@ -216,13 +221,13 @@ snp_tidy =
   relocate(year, month_name, close) %>%  # relocate the sequnence of variables
          select(-month, -day) %>% # drop 'month' and 'day'
          rename(month = month_name) 
-          
+head(snp_tidy)          
          
 ```
 
 
-The dataset: unemployment.csv
-```{r}
+##### The dataset: unemployment.csv
+```{r unemp_df, message = FALSE, collapse = TRUE}
 unem_df = 
   read_csv("./data/fivethirtyeight_datasets/unemployment.csv") %>% 
   janitor::clean_names() 
@@ -247,17 +252,30 @@ unem_tidy =
                       "dec" = "December")) %>% 
   mutate_at(vars(year),as.character)
 
+head(unem_tidy)
 ```
 
 
-Join the datasets by merging snp into pols, and merging unemployment into the result.
-```{r}
-join_df = pols_tidy %>%
+##### Join the datasets by merging snp into pols, and merging unemployment into the result.
+```{r result_df, message = FALSE, collapse = TRUE}
+result_df = pols_tidy_month %>%
           left_join(snp_tidy, by = c("year", "month")) %>%
           left_join(unem_tidy, by = c("year", "month"))
-head(join_df) # take a look 
+head(result_df) # take a look 
 ```
 
-### Summary:
+##### Summary:
 
-Write a short paragraph about these datasets. Explain briefly what each dataset contained, and describe the resulting dataset (e.g. give the dimension, range of years, and names of key variables).
+* The pols dataset contains political data started from year `r min(pols_tidy$year)` to year `r max(pols_tidy$year)`. From the pols dataset we find some interesting variable like the number of different parties' governors, senators, and so on. The dimension of the original pols dataset is 882 by 11. The tidy-version of pols dataset has `r nrow(pols_tidy)` rows and `r ncol(pols_tidy)` columns.
+
+* The snp datase contains the closing values of the Standard & Poor’s stock market index on the associated date between year `r min(snp_tidy$year)` and `r max(snp_tidy$year)`. The original snp dataset only contains 2 variables: date and close. After the step of tidy data, the tidy-version of snp dataset has `r ncol(snp_tidy)` columns and `r nrow(snp_tidy)` rows.
+
+* The unemployment dataset contains the dataset of unemployment rate at the period of year `r min(unem_tidy$year)` to year `r max(unem_tidy$year)`.
+
+* The final dataset merged pols dataset, snp dataset, and unemployment dataset together. There are `r nrow(result_df)` observations of `r ncol(result_df)` variables. The range of year is from `r min(pull(result_df, year))` to `r max(pull(result_df, year))`. The key variables are: `r colnames(result_df[3:11])`.
+
+
+
+
+
+
